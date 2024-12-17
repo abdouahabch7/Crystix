@@ -1,0 +1,467 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>crystix - global mod finder</title>
+	
+    <style>
+        :root {
+            --bg: #1a1a1a;
+            --card: #262626;
+            --hover: #333;
+            --accent: #16a34a;
+            --text: #fff;
+            --dim: #999;
+            --modrinth: #16a34a;
+            --curseforge: #f16436;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            position: fixed;
+            width: 250px;
+            height: 100%;
+            background: var(--card);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .logo {
+            font-size: 24px;
+            margin-bottom: 30px;
+            color: var(--accent);
+        }
+
+        .content {
+            margin-left: 250px;
+            padding: 20px;
+            padding-top: 80px;
+        }
+
+        .search-bar {
+            position: fixed;
+            top: 0;
+            left: 250px;
+            right: 0;
+            padding: 20px;
+            background: var(--bg);
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        input, select {
+            padding: 12px;
+            background: var(--card);
+            border: none;
+            color: var(--text);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        input:focus, select:focus {
+            outline: 2px solid var(--accent);
+        }
+
+        .search-bar input {
+            flex: 1;
+        }
+
+        .mod-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .mod-card, .profile-card {
+            background: var(--card);
+            padding: 15px;
+            border-radius: 8px;
+            transition: 0.2s;
+            cursor: pointer;
+        }
+
+        .mod-card:hover, .profile-card:hover {
+            transform: translateY(-3px);
+            background: var(--hover);
+        }
+
+        .mod-image, .profile-image {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .platform-tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .modrinth { background: var(--modrinth); }
+        .curseforge { background: var(--curseforge); }
+
+        .stats {
+            display: flex;
+            gap: 15px;
+            color: var(--dim);
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px;
+            color: var(--text);
+            text-decoration: none;
+            border-radius: 6px;
+            margin-bottom: 5px;
+            transition: 0.2s;
+        }
+
+        .nav-link:hover {
+            background: var (--hover);
+        }
+
+        .nav-link.active {
+            background: var(--accent);
+        }
+
+        .compare-section {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .platform-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .winner {
+            border: 2px solid var (--accent);
+        }
+
+        .mod-description, .profile-description {
+            color: var(--dim);
+            margin: 10px 0;
+            line-height: 1.4;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--dim);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 60px;
+                padding: 10px;
+            }
+            .content {
+                margin-left: 60px;
+            }
+            .search-bar {
+                left: 60px;
+            }
+            .logo span {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+<div class="logo">
+    <img src="C:/Users/pc/Downloads/minecraft_title.png" alt="Crystix Logo" />
+</div>    <a href="#home" class="nav-link active" onclick="route('home')">
+        <span>🏠</span> <span>home</span>
+    </a>
+    <a href="#search" class="nav-link" onclick="route('search')">
+        <span>🔎</span> <span>search</span>
+    </a>
+    <a href="#profiles" class="nav-link" onclick="route('profiles')">
+        <span>👤</span> <span>profiles</span>
+    </a>
+    <a href="#about" class="nav-link" onclick="route('about')">
+        <span>ℹ️</span> <span>about</span>
+    </a>
+</div>
+
+<div class="content">
+    <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="search mods or profiles across all platforms..." onkeyup="handleSearch(event)">
+        <select id="platformFilter" onchange="handleSearch()">
+            <option value="all">all platforms</option>
+            <option value="modrinth">modrinth</option>
+            <option value="curseforge">curseforge</option>
+        </select>
+        <select id="sortFilter" onchange="handleSearch()">
+            <option value="downloads">downloads</option>
+            <option value="follows">follows</option>
+        </select>
+    </div>
+
+    <div id="content"></div>
+</div>
+
+<script>
+const CURSEFORGE_KEY = '$2a$10$86DprsN9ytmYeRsyW40rCuutmNGQeeiEQvvD7uQYjfU3ZSXUBnOha'
+
+const APIS = {
+    modrinth: 'https://api.modrinth.com/v2',
+    curseforge: 'https://api.curseforge.com/v1'
+}
+
+let currentPage = 'home'
+let searchResults = {
+    modrinth: [],
+    curseforge: []
+}
+
+async function fetchCurseforge(endpoint) {
+    return fetch(`${APIS.curseforge}${endpoint}`, {
+        headers: {
+            'x-api-key': CURSEFORGE_KEY
+        }
+    }).then(r => r.json())
+}
+
+async function route(page) {
+    currentPage = page
+    document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'))
+    document.querySelector(`[onclick="route('${page}')"]`).classList.add('active')
+
+    const content = document.getElementById('content')
+    content.innerHTML = '<div class="loading">loading...</div>'
+
+    switch(page) {
+        case 'home':
+            await loadComparisons()
+            break
+        case 'search':
+            content.innerHTML = '<div class="mod-grid"></div>'
+            break
+        case 'profiles':
+            content.innerHTML = '<div class="mod-grid"></div>'
+            break
+        case 'about':
+            await loadAbout()
+            break
+    }
+}
+
+async function loadComparisons() {
+    const content = document.getElementById('content')
+
+    try {
+        const [modrinthTop, curseforgeTop] = await Promise.all([
+            fetch(`${APIS.modrinth}/search?limit=10`).then(r => r.json()),
+            fetchCurseforge('/mods/search?gameId=432&sortField=1&sortOrder=desc&pageSize=10')
+        ])
+
+        // find winners
+        const topModrinth = modrinthTop.hits[0]
+        const topCurseforge = curseforgeTop.data[0]
+
+        content.innerHTML = `
+            <h2>platform comparison</h2>
+
+            <div class="compare-section">
+                <h3>most downloaded mods</h3>
+                <div class="platform-stats">
+                    <div class="mod-card ${topModrinth.downloads > topCurseforge.downloadCount ? 'winner' : ''}" onclick="window.open('https://modrinth.com/mod/${topModrinth.slug}', '_blank')">
+                        <span class="platform-tag modrinth">modrinth</span>
+                        <img class="mod-image" src="${topModrinth.icon_url || 'https://placehold.co/300x150'}" alt="Image representing Modrinth's most downloaded mod">
+                        <h3>${topModrinth.title}</h3>
+                        <div class="mod-description">${topModrinth.description}</div>
+                        <div class="stats">
+                            <span>👁 ${formatNumber(topModrinth.downloads)}</span>
+                            <span>⭐ ${formatNumber(topModrinth.follows)}</span>
+                        </div>
+                    </div>
+
+                    <div class="mod-card ${topCurseforge.downloadCount > topModrinth.downloads ? 'winner' : ''}" onclick="window.open('${topCurseforge.links?.websiteUrl || '#'}', '_blank')">
+                        <span class="platform-tag curseforge">curseforge</span>
+                        <img class="mod-image" src="${topCurseforge.logo?.url || 'https://placehold.co/300x150'}" alt="Image representing Curseforge's most downloaded mod">
+                        <h3>${topCurseforge.name}</h3>
+                        <div class="mod-description">${topCurseforge.summary}</div>
+                        <div class="stats">
+                            <span>👁 ${formatNumber(topCurseforge.downloadCount)}</span>
+                            <span>⭐ ${formatNumber(topCurseforge.popularityScore)}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="compare-section">
+                <h3>trending mods</h3>
+                <div class="mod-grid">
+                    ${[...modrinthTop.hits, ...curseforgeTop.data]
+                        .sort((a,b) => (b.downloads || b.downloadCount) - (a.downloads || a.downloadCount))
+                        .slice(0,6)
+                        .map(mod => `
+                            <div class="mod-card" onclick="window.open('${mod.downloads ? 'https://modrinth.com/mod/' + mod.slug : mod.links?.websiteUrl}', '_blank')">
+                                <span class="platform-tag ${mod.downloads ? 'modrinth' : 'curseforge'}">${mod.downloads ? 'modrinth' : 'curseforge'}</span>
+                                <img class="mod-image" src="${mod.icon_url || mod.logo?.url || 'https://placehold.co/300x150'}" alt="Image representing ${mod.title || mod.name}">
+                                <h3>${mod.title || mod.name}</h3>
+                                <div class="mod-description">${mod.description || mod.summary}</div>
+                                <div class="stats">
+                                    <span>👁 ${formatNumber(mod.downloads || mod.downloadCount)}</span>
+                                    <span>⭐ ${formatNumber(mod.follows || mod.popularityScore)}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                </div>
+            </div>
+        `
+    } catch (e) {
+        content.innerHTML = `<div class="loading">error loading comparisons: ${e.message}</div>`
+    }
+}
+
+async function handleSearch(e) {
+    if (e && e.key !== 'Enter') return
+
+    const query = document.getElementById('searchInput').value
+    const platform = document.getElementById('platformFilter').value
+    const sort = document.getElementById('sortFilter').value
+    const grid = document.querySelector('.mod-grid')
+
+    if (!query) {
+        grid.innerHTML = '<div class="loading">enter search term</div>'
+        return
+    }
+
+    grid.innerHTML = '<div class="loading">searching...</div>'
+
+    try {
+        if (currentPage === 'search') {
+            if (platform === 'all' || platform === 'modrinth') {
+                const res = await fetch(`${APIS.modrinth}/search?query=${query}`)
+                const data = await res.json()
+                searchResults.modrinth = data.hits
+            }
+
+            if (platform === 'all' || platform === 'curseforge') {
+                const res = await fetchCurseforge(`/mods/search?gameId=432&searchFilter=${query}`)
+                searchResults.curseforge = res.data
+            }
+
+            const results = [
+                ...(platform !== 'curseforge' ? searchResults.modrinth : []),
+                ...(platform !== 'modrinth' ? searchResults.curseforge : [])
+            ]
+
+            results.sort((a, b) => (b[sort] || b.downloadCount) - (a[sort] || a.downloadCount))
+
+            grid.innerHTML = `
+                <div class="loading">${results.length} projects found</div>
+                ${results.length ? results.map(mod => `
+                    <div class="mod-card" onclick="window.open('${mod.downloads ? 'https://modrinth.com/mod/' + mod.slug : mod.links?.websiteUrl}', '_blank')">
+                        <span class="platform-tag ${mod.downloads ? 'modrinth' : 'curseforge'}">${mod.downloads ? 'modrinth' : 'curseforge'}</span>
+                        <img class="mod-image" src="${mod.icon_url || mod.logo?.url || 'https://placehold.co/300x150'}" alt="Image representing ${mod.title || mod.name}">
+                        <h3>${mod.title || mod.name}</h3>
+                        <div class="mod-description">${mod.description || mod.summary}</div>
+                        <div class="stats">
+                            <span>👁 ${formatNumber(mod.downloads || mod.downloadCount)}</span>
+                            <span>⭐ ${formatNumber(mod.follows || mod.popularityScore)}</span>
+                        </div>
+                    </div>
+                `).join('') : '<div class="loading">no mods found</div>'}
+            `
+        } else if (currentPage === 'profiles') {
+            let results = []
+
+            if (platform === 'all' || platform === 'modrinth') {
+                const res = await fetch(`${APIS.modrinth}/user/${query}`)
+                if (res.ok) {
+                    const data = await res.json()
+                    results.push({
+                        platform: 'modrinth',
+                        name: data.username,
+                        icon_url: data.avatar_url,
+                        description: data.bio,
+                        url: `https://modrinth.com/user/${data.username}`
+                    })
+                }
+            }
+
+            // CurseForge does not support username search, so we skip it
+
+            grid.innerHTML = `
+                <div class="loading">${results.length} profiles found</div>
+                ${results.length ? results.map(profile => `
+                    <div class="profile-card" onclick="window.open('${profile.url}', '_blank')">
+                        <span class="platform-tag ${profile.platform}">${profile.platform}</span>
+                        <img class="profile-image" src="${profile.icon_url || 'https://placehold.co/300x150'}" alt="Image representing ${profile.name}">
+                        <h3>${profile.name}</h3>
+                        <div class="profile-description">${profile.description}</div>
+                    </div>
+                `).join('') : '<div class="loading">No Profiles with that name has been found</div>'}
+            `
+        }
+    } catch (e) {
+        grid.innerHTML = `<div class="loading">error searching: ${e.message}</div>`
+    }
+}
+
+async function loadAbout() {
+    const content = document.getElementById('content')
+    content.innerHTML = `
+        <div class="compare-section">
+            <h2>about Crystix</h2>
+            <p>crystix is a global mod search engine that lets you find and compare minecraft mods across different platforms </p>
+
+            <h3>features</h3>
+            <ul>
+                <li>search mods across multiple platforms</li>
+                <li>compare mod statistics and popularity</li>
+                <li>track trending mods</li>
+                <li>platform specific filtering</li>
+            </ul>
+
+            <h3>supported platforms</h3>
+            <ul>
+                <li>modrinth - modern minecraft mod platform</li>
+                <li>curseforge - classic mod repository</li>
+            </ul>
+
+            <h3>coming soon</h3>
+            <ul>
+                <li>mod version compatibility checker</li>
+                <li>direct download links</li>
+                <li>mod pack builder</li>
+                <li>more platforms</li>
+            </ul>
+        </div>
+    `
+}
+
+function formatNumber(num) {
+    return new Intl.NumberFormat('en-US', { notation: 'compact' }).format(num)
+}
+
+route('home')
+</script>
+</body>
+</html>
